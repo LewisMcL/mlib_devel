@@ -7,6 +7,8 @@ Welcome to the CASPER Toolflow repository, `mlib_devel`!
  - Download Windows Subsystem for Linux from the Microsoft Store (specifically Ubuntu 16.04 LTS)
  - Setup an appropriate home directory for WSL, the filepath of the default one is far too long
  - Download and install Chocolatey for windows (this is required to easily update the environmental variables using refreshenv)
+ 
+ Note: Have not confirmed backwards compatibility with an Ubuntu OS. Also, this is very much a work in progress.
 
 ## What is mlib_devel?
 
