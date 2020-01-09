@@ -1,12 +1,12 @@
 # The CASPER Toolflow [![Documentation Status](https://readthedocs.org/projects/casper-toolflow/badge/?version=latest)](https://casper-toolflow.readthedocs.io/en/latest/?badge=latest)
 
+Welcome to the CASPER Toolflow repository, `mlib_devel`!
+
 ## This fork provides Windows 10 Compatibility
  - Clone this repository 
  - Download Windows Subsystem for Linux from the Microsoft Store (specifically Ubuntu 16.04 LTS)
  - Setup an appropriate home directory for WSL, the filepath of the default one is far too long
  - Download and install Chocolatey for windows (this is required to easily update the environmental variables using refreshenv)
-
-Welcome to the CASPER Toolflow repository, `mlib_devel`!
 
 ## What is mlib_devel?
 
