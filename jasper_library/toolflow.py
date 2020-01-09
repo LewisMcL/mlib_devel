@@ -519,12 +519,12 @@ class Toolflow(object):
             fh.write(s)
         # generate the binary and xilinx-style .mem versions of this table,
         # using Python script [TODO convert to a callable function?].
-        ret = os.system('python %s/jasper_library/cit2csl.py -b %s > %s.bin' % (os.getenv('MLIB_DEVEL_PATH'), newfile, newfile))
+        ret = os.system('python %s/jasper_library/sw/jam/util/cit2csl.py -b %s > %s.bin' % (os.getenv('MLIB_DEVEL_PATH'), newfile, newfile))
         if ret != 0:
             errmsg = 'Failed to generate binary file {}.bin, error code {}.'.format(newfile,ret)
             self.logger.error(errmsg)
             raise Exception(errmsg)
-        ret = os.system('python %s/jasper_library/cit2csl.py %s > %s.mem' % (os.getenv('MLIB_DEVEL_PATH'), newfile, newfile))
+        ret = os.system('python %s/jasper_library/sw/jam/util/cit2csl.py %s > %s.mem' % (os.getenv('MLIB_DEVEL_PATH'), newfile, newfile))
         if ret != 0:
             errmsg = 'Failed to generate xilinx-style file {}.mem, error code {}.'.format(newfile,ret)
             self.logger.error(msg)
