@@ -1,7 +1,7 @@
-from yellow_block import YellowBlock
+from .yellow_block import YellowBlock
 from clk_factors import clk_factors
 from constraints import ClockConstraint, ClockGroupConstraint, PortConstraint, RawConstraint
-
+import os
 
 class zcu111(YellowBlock):
     def initialize(self):
@@ -99,7 +99,10 @@ class zcu111(YellowBlock):
         3. Have vivado make an HDL wrapper around the block design.
         4. Add the wrapper HDL file to project.
         """
-        tcl_cmds['pre_synth'] += ['source {}'.format(self.hdl_root + '/infrastructure/zcu111.tcl')]
+        if os.getenv('PLATFORM')=='win64':
+            tcl_cmds['pre_synth'] += ['source {}'.format('C:' + self.hdl_root[6:] + '/infrastructure/zcu111.tcl')]
+        else:
+            tcl_cmds['pre_synth'] += ['source {}'.format(self.hdl_root + '/infrastructure/zcu111.tcl')]
         tcl_cmds['pre_synth'] += ['generate_target all [get_files [get_property directory [current_project]]/myproj.srcs/sources_1/bd/zcu111/zcu111.bd]']        
         tcl_cmds['pre_synth'] += ['make_wrapper -files [get_files [get_property directory [current_project]]/myproj.srcs/sources_1/bd/zcu111/zcu111.bd] -top']
         tcl_cmds['pre_synth'] += ['add_files -norecurse [get_property directory [current_project]]/myproj.srcs/sources_1/bd/zcu111/hdl/zcu111_wrapper.vhd']

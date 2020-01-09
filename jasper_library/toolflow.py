@@ -24,6 +24,7 @@ import struct   # Used to append a binary checksum to a bitstream
 # For xml2vhdl generation from Oxford
 import xml.dom.minidom
 import xml.etree.ElementTree as ET
+import subprocess # Used to find user's path to WSL
 
 #JH: I don't know what this is, but I suspect here is a better place for it than constraints.py
 MAX_IMAGE_CHUNK_SIZE = 1988
@@ -1268,6 +1269,17 @@ class SimulinkFrontend(ToolflowFrontend):
                                 'simulink file!' % target)
         self.modelpath = target
         self.modelname = target.split('/')[-1][:-4]  # strip off extension
+        
+        if os.getenv('PLATFORM') == 'win64':
+            self.compile_dir_viv = 'C:'+self.compile_dir[6:]
+            self.modelpath = 'C:' + self.modelpath[6:]
+            self.cd = 'cd C:%s' % os.getenv('MLIB_DEVEL_PATH')[6:]
+            self.addCasperPath = 'addpath(genpath(\'C:%s\'));' % (os.getenv('MLIB_DEVEL_PATH')[6:])
+        else:
+            self.compile_dir_viv = self.compile_dir
+            self.cd = ''
+            self.addCasperPath = ''
+
 
     def gen_periph_file(self, fname='jasper.per'):
         """
@@ -1280,12 +1292,18 @@ class SimulinkFrontend(ToolflowFrontend):
         :param fname: The full path and name to give the peripheral file.
         :type fname: str
         """
+        if os.getenv('PLATFORM') == 'win64':
+            fname = 'C:' + fname[6:]
+        
         self.logger.info('Generating yellow block description file: %s' % fname)
         # change directory to the matlab script directory
         term_cmd = os.getenv('MLIB_DEVEL_PATH')
         os.chdir(term_cmd)
         # The command to start matlab with appropriate libraries
-        matlab_start_cmd = os.path.join(os.getenv('XILINX_PATH'), 'bin', 'sysgen')
+        if os.getenv('PLATFORM') == 'win64':
+            matlab_start_cmd = os.path.join(os.getenv('XILINX_PATH'), 'bin', 'sysgen.bat')
+        else:
+            matlab_start_cmd = os.path.join(os.getenv('XILINX_PATH'), 'bin', 'sysgen')
         #matlab_start_cmd = os.getenv('SYSGEN_SCRIPT')
         # The matlab script responsible for generating the peripheral file
         # each script represents a matlab function
@@ -1299,14 +1317,19 @@ class SimulinkFrontend(ToolflowFrontend):
         # gen_xps_add_design_info().
         # if open_system() and set_param() are not run then the peripheral
         # names will be incorrectly generated and the design will not compile.
-        # Everything is run on a single matlab terminal line
-        ml_cmd = "%s('%s');sys=gcs;%s(sys,'SimulationCommand','update');" \
+        # Everything is run on a single matlab terminal line 
+
+        ml_cmd = "%s, %s; addpath(genpath('../mlib_devel')); %s('%s');sys=gcs;%s(sys,'SimulationCommand','update');" \
                  "%s('%s','%s');mssge.xps_path='%s';" \
-                 "%s(sys,mssge,'/');exit" % (script1, self.modelpath, script2,
+                 "%s(sys,mssge,'/');exit" % (self.addCasperPath, self.cd, script1,self.modelpath, script2,
                                              script3, self.compile_dir, fname,
-                                             self.compile_dir, script4)
+                                             self.compile_dir_viv, script4)
         # Complete command to run on terminal
-        term_cmd = matlab_start_cmd + ' -nodesktop -nosplash -r "%s"' % ml_cmd
+
+        if os.getenv('PLATFORM') == 'win64':
+            term_cmd = '/mnt/c/Windows/System32/cmd.exe ' + matlab_start_cmd + ' -nodesktop -nosplash -r "%s"' % ml_cmd
+        else:
+            term_cmd = matlab_start_cmd + ' -nodesktop -nosplash -r "%s"' % ml_cmd
         self.logger.info('Running terminal command: %s' % term_cmd)
         os.system(term_cmd)
 
@@ -1342,11 +1365,15 @@ class SimulinkFrontend(ToolflowFrontend):
         # The command to start matlab with appropriate libraries
         # matlab_start_cmd = os.getenv('MLIB_DEVEL_PATH') + '/startsg'
         #matlab_start_cmd = os.getenv('SYSGEN_SCRIPT')
-        matlab_start_cmd = os.path.join(os.getenv('XILINX_PATH'), 'bin', 'sysgen')
+        if os.getenv('PLATFORM') == 'win64':
+            matlab_start_cmd = os.path.join(os.getenv('XILINX_PATH'), 'bin', 'sysgen.bat')
+        else:
+            matlab_start_cmd = os.path.join(os.getenv('XILINX_PATH'), 'bin', 'sysgen')
         # The matlab syntax to start a compile with appropriate args
-        ml_cmd = "start_sysgen_compile('%s','%s',%d);exit" % (
-            self.modelpath, self.compile_dir, int(update))
-        term_cmd = matlab_start_cmd + ' -nodesktop -nosplash -r "%s"' % ml_cmd
+
+        ml_cmd = "%s, %s; addpath(genpath('../mlib_devel')); start_sysgen_compile('%s','%s',%d);exit" % (
+            self.addCasperPath, self.cd, self.modelpath, self.compile_dir_viv, int(update))
+        term_cmd = '/mnt/c/Windows/System32/cmd.exe ' + matlab_start_cmd + ' -nodesktop -nosplash -r "%s"' % ml_cmd
         self.logger.info('Running terminal command: %s' % term_cmd)
         os.system(term_cmd)
 
@@ -1362,7 +1389,13 @@ class VivadoBackend(ToolflowBackend):
         :param periph_objs:
         """
         self.logger = logging.getLogger('jasper.toolflow.backend')
+
         self.compile_dir = compile_dir
+        if os.getenv('PLATFORM') == 'win64':        
+            self.compile_dir_viv = 'C:' + compile_dir[6:]
+        else:
+            self.compile_dir_viv = compile_dir
+
         self.const_file_ext = 'xdc'
         # src_file parameters for non-project mode only
         self.src_file_vhdl_ext = 'vhd'
@@ -1377,6 +1410,7 @@ class VivadoBackend(ToolflowBackend):
         self.project_name = 'myproj'
         self.periph_objs = periph_objs
         self.tcl_cmd = ''
+
         # if project mode is enabled
         if plat.project_mode:
             self.binary_loc = '%s/%s/%s.runs/impl_1/top.bin' % (
@@ -1426,15 +1460,15 @@ class VivadoBackend(ToolflowBackend):
         # Create Vivado Project in project mode only
         if plat.project_mode:
             self.add_tcl_cmd('create_project -f %s %s/%s -part %s' % (
-                self.project_name, self.compile_dir, self.project_name,
+                self.project_name, self.compile_dir_viv, self.project_name,
                 plat.fpga))
         # Create the part in non-project mode (project runs in memory only)
         else:
-            self.add_tcl_cmd('file mkdir %s/%s' % (self.compile_dir,
+            self.add_tcl_cmd('file mkdir %s/%s' % (self.compile_dir_viv,
                                                    self.project_name))
             self.add_tcl_cmd('set_part %s' % plat.fpga)
         # Set the project to default to vhdl    
-        self.add_tcl_cmd('set_property target_language VHDL [current_project]')    
+        self.add_tcl_cmd('set_property target_language VHDL [current_project]')
 
     def add_library(self, path):
         """
@@ -1461,7 +1495,10 @@ class VivadoBackend(ToolflowBackend):
         self.logger.debug('Adding source file: %s' % source)
         # Project Mode is enabled
         if plat.project_mode:
-            self.add_tcl_cmd('import_files -force %s' % source)
+            if os.getenv('PLATFORM') == 'win64' and source[0:7] == '/mnt/c/':
+                self.add_tcl_cmd('import_files -force C:%s' % source[6:])
+            else:
+                self.add_tcl_cmd('import_files -force %s' % source)
         # Non-Project Mode is enabled
         else:
             if os.path.basename(source) == 'top.v':
@@ -1511,6 +1548,7 @@ class VivadoBackend(ToolflowBackend):
                 else:
                     self.logger.warning('unknown extension, ignoring source file %s' % current_source)
 
+       
     def add_const_file(self, constfile):
         """
         Add a constraint file to the project. via a tcl incantation.
@@ -1522,6 +1560,9 @@ class VivadoBackend(ToolflowBackend):
         :param constfile:
         """
         if constfile.split('.')[-1] == self.const_file_ext:
+            if os.getenv('PLATFORM')=='win64':
+                constfile = 'C:' + constfile[6:]
+
             self.logger.debug('Adding constraint file: %s' % constfile)
             # Project Mode is enabled
             if self.plat.project_mode:
@@ -1627,7 +1668,7 @@ class VivadoBackend(ToolflowBackend):
                 if plat.conf['bit_reversal'] == True:
                     self.add_tcl_cmd('write_cfgmem -force -format bin -interface bpix8 -size 128 -loadbit "up 0x0 '
                                   '%s/%s/%s.runs/impl_1/top.bit" -file %s'
-                                   % (self.compile_dir, self.project_name, self.project_name, self.binary_loc), stage='post_bitgen')
+                                   % (self.compile_dir_viv, self.project_name, self.project_name, self.binary_loc), stage='post_bitgen')
             # just ignore if key is not present as only some platforms will have the key.
             except KeyError:
                 s = ""
@@ -1817,9 +1858,18 @@ class VivadoBackend(ToolflowBackend):
         tcl_file = self.compile_dir+'/gogogo.tcl'
         helpers.write_file(tcl_file, self.eval_tcl())
 
-        rv = os.system('vivado -jou {cdir}/vivado.jou -log {cdir}/vivado.log '
+        if os.getenv('PLATFORM') == 'win64':
+            tcl_file = 'C:/' + tcl_file[6:]
+
+        rv = os.system('cmd.exe /c vivado -jou {cdir}/vivado.jou -log {cdir}/vivado.log '
                        '-mode batch -source '
-                       '{cfile}'.format(cdir=self.compile_dir, cfile=tcl_file))
+                       '{cfile}'.format(cdir=self.compile_dir_viv, cfile=tcl_file))
+        
+        self.logger.info('vivado -jou {cdir}/vivado.jou -log {cdir}/vivado.log '
+                       '-mode batch -source '
+                       '{cfile}'.format(cdir=self.compile_dir_viv, cfile=tcl_file))
+        self.logger.info(rv)
+
         if rv:
             raise Exception('Vivado failed!')
 
@@ -2023,7 +2073,7 @@ class VivadoBackend(ToolflowBackend):
                 f.write(val)
                 f.close()
                 # add the tcl command to add the source to the project
-                self.add_source('%s/%s' %(self.compile_dir, key), self.plat)
+                self.add_source('%s/%s' %(self.compile_dir_viv, key), self.plat)
 
     def gen_add_compile_dir_source_tcl_cmds(self):
         """
@@ -2034,7 +2084,7 @@ class VivadoBackend(ToolflowBackend):
             c = obj.add_build_dir_source()
             for d in c:
                 #self.add_source('%s/%s' %(self.compile_dir, d['files']), self.plat)
-                self.add_tcl_cmd('add_files %s/%s' %(self.compile_dir, d['files']), stage='pre_synth')
+                self.add_tcl_cmd('add_files %s/%s' %(self.compile_dir_viv, d['files']), stage='pre_synth')
                 #if d['library'] != '':
                     # add the source to a library if the library key exists
                 #    self.add_tcl_cmd('set_property library %s [get_files  {%s/%s%s}]' %(d['library'], self.compile_dir, d['files'], '*' if d['files'][-1]=='/' else ''), stage='pre_synth')

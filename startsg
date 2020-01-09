@@ -140,6 +140,18 @@ export PLATFORM
 export MLIB_DEVEL_PATH
 export JASPER_BACKEND
 
+# If using windows 
+if [ "$PLATFORM" = "win64" ]
+then
+	/mnt/c/Windows/System32/cmd.exe /c setx MLIB_DEVEL_PATH C:${MLIB_DEVEL_PATH:6}
+	/mnt/c/Windows/System32/cmd.exe /c setx JASPER_BACKEND ${JASPER_BACKEND}
+	/mnt/c/Windows/System32/cmd.exe /c setx XILINX_PATH C:${XILINX_PATH:6}
+	#if [ -n "${XILINXD_LICENCE_FILE}" ]
+	#then
+	#  /mnt/c/Windows/System32/cmd.exe /c setx XILINXD_LICENCE_FILE C:${XILINXD_LICENCE_FILE:6}
+	#fi
+fi
+
 # Show environment essentials
 echo "Using MATLAB_PATH=${MATLAB_PATH}"
 echo "Using XILINX_PATH=${XILINX_PATH}"
@@ -173,13 +185,25 @@ umask 002
 if [ "$0" == "${BASH_SOURCE[0]}" ]
 then
   # Save start-up directory (if defined, startup.m will cd there)
-  export CASPER_STARTUP_DIR=`pwd`
+  CASPER_STARTUP_DIR=`pwd`
+  export CASPER_STARTUP_DIR
+  # If using windows 
+  if [ "$PLATFORM" = "win64" ] 
+  then
+	/mnt/c/Windows/System32/cmd.exe /c setx CASPER_STARTUP_DIR C:${CASPER_STARTUP_DIR:6}
+  fi
 
   # Change into the MLIB_DEVEL_PATH directory
   # (so MATLAB will find our startup.m file).
   cd "${MLIB_DEVEL_PATH}"
 
   # Start sysgen in OPENGL graphics mode to prevent java errors
-  "${XILINX_PATH}/bin/sysgen" -softwareopengl
+  if [ "$PLATFORM" = "win64" ]
+  then
+    # Ensure Chocolatey is installed on windows to use refreshenv
+    cmd.exe /c "refreshenv && C:${XILINX_PATH:6}/bin/sysgen.bat"
+  else
+    "${XILINX_PATH}/bin/sysgen" -softwareopengl
+  fi
 
 fi

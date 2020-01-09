@@ -1,6 +1,7 @@
 import math
 from .yellow_block import YellowBlock
 from .yellow_block_typecodes import *
+import os
 
 class axi4lite_interconnect(YellowBlock):
     """
@@ -78,7 +79,10 @@ class axi4lite_interconnect(YellowBlock):
         print('=====================')
         tcl_cmds = {}
         tcl_cmds['pre_synth'] = []
-        tcl_cmds['pre_synth'] += ['add_files {%s/axi4_lite/axi4lite_slave_logic.vhd %s/axi4_lite/axi4lite_pkg.vhd}' %(self.hdl_root, self.hdl_root)]
+        if os.getenv('PLATFORM')=='win64':
+            tcl_cmds['pre_synth'] += ['add_files {C:%s/axi4_lite/axi4lite_slave_logic.vhd C:%s/axi4_lite/axi4lite_pkg.vhd}' %(self.hdl_root[6:], self.hdl_root[6:])]
+        else:
+            tcl_cmds['pre_synth'] += ['add_files {%s/axi4_lite/axi4lite_slave_logic.vhd %s/axi4_lite/axi4lite_pkg.vhd}' %(self.hdl_root, self.hdl_root)]
         tcl_cmds['pre_synth'] += ['update_compile_order -fileset sources_1']
         return tcl_cmds
 
