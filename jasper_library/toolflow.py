@@ -910,7 +910,7 @@ class Toolflow(object):
             the compile directory
         :type filename_bin: str
         """
-        stringToMatch_ver = '2018.2'
+        stringToMatch_ver = '2019.1'
         stringToMatchS = '_xldpram'
         stringToMatchA = 'latency_test: if (latency > 6) generate'
         stringToMatchB = 'latency => latency - 6'
